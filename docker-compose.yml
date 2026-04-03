@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  solara:
+    build: .
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # 挂载下载目录，用户可以修改为自己的目录
+      - ./downloads:/app/downloads
+      # 可选：挂载本地目录进行开发
+      # - .:/app

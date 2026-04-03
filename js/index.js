@@ -3758,6 +3758,15 @@ function createSearchResultItem(song, index) {
         qualityMenu.appendChild(qualityItem);
     });
 
+    // 添加下载到服务器选项
+    const serverItem = document.createElement("div");
+    serverItem.className = "quality-option quality-option--server";
+    serverItem.textContent = "下载到服务器";
+    serverItem.addEventListener("click", (event) => {
+        downloadWithQuality(event, index, "search", state.playbackQuality, true);
+    });
+    qualityMenu.appendChild(serverItem);
+
     downloadButton.appendChild(qualityMenu);
 
     actions.appendChild(favoriteButton);
@@ -4080,6 +4089,7 @@ function showQualityMenu(event, index, type) {
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '192')">高音质 (192k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '320')">超高音质 (320k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '999')">无损音质</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '${state.playbackQuality}', true)">下载到服务器</div>
     `;
 
     // 设置菜单位置
@@ -4105,7 +4115,7 @@ function showQualityMenu(event, index, type) {
 }
 
 // 根据质量下载 - 支持播放列表模式
-async function downloadWithQuality(event, index, type, quality) {
+async function downloadWithQuality(event, index, type, quality, toServer = false) {
     event.stopPropagation();
     let song;
 
@@ -4135,7 +4145,11 @@ async function downloadWithQuality(event, index, type, quality) {
     }
 
     try {
-        await downloadSong(song, quality);
+        if (toServer) {
+            await downloadToServer(song, quality);
+        } else {
+            await downloadSong(song, quality);
+        }
     } catch (error) {
         console.error("下载失败:", error);
         showNotification("下载失败，请稍后重试", "error");
@@ -5931,6 +5945,33 @@ async function downloadSong(song, quality = "320") {
     } catch (error) {
         console.error("下载失败:", error);
         showNotification("下载失败，请稍后重试", "error");
+    }
+}
+
+// 下载到服务器
+async function downloadToServer(song, quality = "320") {
+    try {
+        showNotification("正在准备下载到服务器...");
+
+        // 向服务器发送下载请求
+        const response = await fetch("/api/download", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ song, quality }),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification(`已下载到服务器: ${result.filename}`, "success");
+        } else {
+            throw new Error(result.error || "下载到服务器失败");
+        }
+    } catch (error) {
+        console.error("下载到服务器失败:", error);
+        showNotification(`下载到服务器失败: ${error.message}`, "error");
     }
 }
 
