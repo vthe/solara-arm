@@ -13,7 +13,7 @@ app.use(express.static(__dirname));
 // API 路由
 app.post('/api/download', async (req, res) => {
     try {
-        const { song, quality = "320" } = req.body;
+        let { song, quality = "320" } = req.body;
 
         if (!song || !song.id || !song.source) {
             return res.status(400).json({ error: "Invalid song data" });
@@ -22,20 +22,55 @@ app.post('/api/download', async (req, res) => {
         // API 配置
         const API_BASE_URL = "https://music-api.gdstudio.xyz/api.php";
 
-        // 获取音频URL
-        const signature = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        const audioUrl = `${API_BASE_URL}?types=url&id=${song.id}&source=${song.source}&br=${quality}&s=${signature}`;
-        
-        // 发送请求获取音频URL
-        const audioResponse = await fetch(audioUrl);
-        if (!audioResponse.ok) {
-            throw new Error(`Failed to get audio URL: ${audioResponse.status}`);
+        // 定义质量优先级（从高到低）
+        const qualityFallbackOrder = quality === "999" 
+            ? ["999", "740", "320", "192", "128"]  // FLAC > APE > 320k > 192k > 128k
+            : quality === "740"
+            ? ["740", "999", "320", "192", "128"]  // APE > FLAC > 320k > 192k > 128k
+            : [quality];
+
+        let audioData = null;
+        let usedQuality = null;
+
+        // 尝试按优先级获取音频URL
+        for (const attemptQuality of qualityFallbackOrder) {
+            try {
+                const signature = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                const audioUrl = `${API_BASE_URL}?types=url&id=${song.id}&source=${song.source}&br=${attemptQuality}&s=${signature}`;
+                
+                console.log(`[Download] Requesting: quality=${attemptQuality}, songId=${song.id}, source=${song.source}`);
+                
+                const audioResponse = await fetch(audioUrl);
+                if (!audioResponse.ok) {
+                    throw new Error(`Failed to get audio URL: ${audioResponse.status}`);
+                }
+                
+                const data = await audioResponse.json();
+                
+                console.log(`[Download] API Response for quality ${attemptQuality}:`, !!data?.url);
+                
+                if (data && data.url) {
+                    audioData = data;
+                    usedQuality = attemptQuality;
+                    
+                    if (attemptQuality !== quality) {
+                        console.log(`[Download] Original quality ${quality} not available, using ${attemptQuality}`);
+                    }
+                    break;
+                }
+            } catch (error) {
+                console.log(`[Download] Failed to get quality ${attemptQuality}: ${error.message}`);
+                if (attemptQuality === qualityFallbackOrder[qualityFallbackOrder.length - 1]) {
+                    // 如果都失败了，抛出错误
+                    throw error;
+                }
+                // 否则继续尝试下一个质量
+                continue;
+            }
         }
-        
-        const audioData = await audioResponse.json();
-        
+
         if (!audioData || !audioData.url) {
-            return res.status(500).json({ error: "Failed to get audio URL" });
+            return res.status(500).json({ error: "Failed to get audio URL from all quality levels" });
         }
 
         // 下载音频文件
@@ -45,7 +80,7 @@ app.post('/api/download', async (req, res) => {
         }
 
         // 生成文件名
-        const preferredExtension = quality === "999" ? "flac" : quality === "740" ? "ape" : "mp3";
+        const preferredExtension = usedQuality === "999" ? "flac" : usedQuality === "740" ? "ape" : "mp3";
         let fileExtension = preferredExtension;
         
         try {
@@ -72,11 +107,15 @@ app.post('/api/download', async (req, res) => {
         const buffer = await audioFileResponse.arrayBuffer();
         fs.writeFileSync(downloadPath, Buffer.from(buffer));
         
+        const qualityLabel = usedQuality === "999" ? "无损(FLAC)" : usedQuality === "740" ? "无损(APE)" : usedQuality === "320" ? "极高音质" : usedQuality === "192" ? "高品音质" : "标准音质";
+        
         res.json({ 
             success: true, 
             filename, 
-            path: downloadPath, 
-            message: `File downloaded to server: ${downloadPath}` 
+            path: downloadPath,
+            quality: usedQuality,
+            qualityLabel,
+            message: `File downloaded to server: ${downloadPath} (${qualityLabel})` 
         });
     } catch (error) {
         console.error("Download error:", error);

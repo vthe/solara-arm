@@ -655,7 +655,8 @@ const QUALITY_OPTIONS = [
     { value: "128", label: "标准音质", description: "128 kbps" },
     { value: "192", label: "高品音质", description: "192 kbps" },
     { value: "320", label: "极高音质", description: "320 kbps" },
-    { value: "999", label: "无损音质", description: "FLAC" }
+    { value: "740", label: "无损音质", description: "APE（需API支持）" },
+    { value: "999", label: "无损音质", description: "FLAC（需API支持）" }
 ];
 
 function normalizeQuality(value) {
@@ -4089,12 +4090,14 @@ function showQualityMenu(event, index, type) {
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '128')">标准音质 (128k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '192')">高音质 (192k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '320')">超高音质 (320k)</div>
-        <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '999')">无损音质</div>
+        <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '740')">无损音质 (APE)</div>
+        <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '999')">无损音质 (FLAC)</div>
         <div class="quality-option-group">下载到服务器:</div>
         <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '128', true)">标准音质 (128k)</div>
         <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '192', true)">高音质 (192k)</div>
         <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '320', true)">超高音质 (320k)</div>
-        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '999', true)">无损音质</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '740', true)">无损音质 (APE)</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '999', true)">无损音质 (FLAC)</div>
     `;
 
     // 设置菜单位置
@@ -5970,7 +5973,15 @@ async function downloadToServer(song, quality = "320") {
         const result = await response.json();
 
         if (result.success) {
-            showNotification(`已下载到服务器: ${result.filename}`, "success");
+            const qualityInfo = result.qualityLabel || `${result.quality}kbps`;
+            const message = result.quality !== quality 
+                ? `已下载到服务器: ${result.filename} (原请求: ${quality}, 实际: ${result.quality})`
+                : `已下载到服务器: ${result.filename} (${qualityInfo})`;
+            showNotification(message, "success");
+        } else if (result.fallbackQuality && quality === "999") {
+            // 无损格式不可用，自动降级到 320kbps
+            showNotification(`该歌曲不支持无损格式，自动降级为 320kbps`, "warning");
+            await downloadToServer(song, "320");
         } else {
             throw new Error(result.error || "下载到服务器失败");
         }
