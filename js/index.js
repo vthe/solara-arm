@@ -4085,11 +4085,16 @@ function showQualityMenu(event, index, type) {
     const menu = document.createElement("div");
     menu.className = "dynamic-quality-menu";
     menu.innerHTML = `
+        <div class="quality-option-group">下载到本地:</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '128')">标准音质 (128k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '192')">高音质 (192k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '320')">超高音质 (320k)</div>
         <div class="quality-option" onclick="downloadWithQuality(event, ${index}, '${type}', '999')">无损音质</div>
-        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '${state.playbackQuality}', true)">下载到服务器</div>
+        <div class="quality-option-group">下载到服务器:</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '128', true)">标准音质 (128k)</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '192', true)">高音质 (192k)</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '320', true)">超高音质 (320k)</div>
+        <div class="quality-option quality-option--server" onclick="downloadWithQuality(event, ${index}, '${type}', '999', true)">无损音质</div>
     `;
 
     // 设置菜单位置

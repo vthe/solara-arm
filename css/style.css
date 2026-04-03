@@ -1491,6 +1491,19 @@ html.mobile-view .favorites .favorite-item-action--remove {
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
 }
 
+.quality-option-group {
+    padding: 6px 14px 4px 14px;
+    font-size: 0.8em;
+    color: var(--secondary-text-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dark-mode .quality-option-group {
+    color: rgba(255, 255, 255, 0.6);
+}
+
 .lyrics {
     grid-area: lyrics;
     text-align: center;
