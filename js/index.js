@@ -1939,6 +1939,11 @@ function savePlayerState(options = {}) {
         safeSetLocalStorage("currentSong", "", { skipRemote });
     }
     safeSetLocalStorage("currentPlaybackTime", String(state.currentPlaybackTime || 0), { skipRemote });
+    
+    // 异步保存到服务器
+    if (!skipRemote) {
+        saveUserDataToServer("playlistSongs", state.playlistSongs).catch(() => {});
+    }
 }
 
 function saveFavoriteState(options = {}) {
@@ -1947,6 +1952,11 @@ function saveFavoriteState(options = {}) {
     safeSetLocalStorage("currentFavoriteIndex", String(state.currentFavoriteIndex), { skipRemote });
     safeSetLocalStorage("favoritePlayMode", state.favoritePlayMode, { skipRemote });
     safeSetLocalStorage("favoritePlaybackTime", String(state.favoritePlaybackTime || 0), { skipRemote });
+    
+    // 异步保存到服务器
+    if (!skipRemote) {
+        saveUserDataToServer("favoriteSongs", state.favoriteSongs).catch(() => {});
+    }
 }
 
 // 调试日志函数
@@ -2864,6 +2874,56 @@ async function restoreCurrentSongState() {
     }
 }
 
+// 从服务器加载配置
+async function loadServerConfig() {
+    try {
+        const response = await fetch("/api/config");
+        const result = await response.json();
+        if (result.success && result.config) {
+            console.log("[Config] Server config loaded:", result.config);
+            // 如果服务器有默认音源设置，可以在这里应用
+            return result.config;
+        }
+    } catch (error) {
+        console.warn("[Config] Failed to load server config:", error);
+    }
+    return null;
+}
+
+// 从服务器恢复用户数据
+async function restoreUserDataFromServer(key) {
+    try {
+        const response = await fetch(`/api/user-data/${key}`);
+        const result = await response.json();
+        if (result.success && result.data) {
+            console.log(`[Storage] Restored ${key} from server:`, result.data);
+            return result.data;
+        }
+    } catch (error) {
+        console.warn(`[Storage] Failed to restore ${key}:`, error);
+    }
+    return null;
+}
+
+// 保存用户数据到服务器
+async function saveUserDataToServer(key, data) {
+    try {
+        const response = await fetch(`/api/user-data/${key}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data })
+        });
+        const result = await response.json();
+        if (result.success) {
+            console.log(`[Storage] Saved ${key} to server`);
+            return true;
+        }
+    } catch (error) {
+        console.warn(`[Storage] Failed to save ${key}:`, error);
+    }
+    return false;
+}
+
 window.addEventListener("load", setupInteractions);
 // 仅在浏览器不支持 Media Session API 时监听 ended 事件。
 // 避免与媒体会话的结束回调重复触发自动播放。
@@ -2872,6 +2932,11 @@ if (!("mediaSession" in navigator)) {
 }
 
 function setupInteractions() {
+    // 加载服务器配置
+    loadServerConfig().catch(err => {
+        console.warn("Failed to load server config:", err);
+    });
+
     function ensureQualityMenuPortal() {
         if (!dom.playerQualityMenu || !document.body || !isMobileView) {
             return;

@@ -8,5 +8,12 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
+      # 默认音源（可选值：netease、tencent、tidal、spotify、ytmusic、qobuz、joox、deezer、migu、kugou、kuwo、ximalaya、apple）
+      - DEFAULT_MUSIC_SOURCE=netease
+      # 可选：其他配置
+      - MUSIC_API_BASE=https://music-api.gdstudio.xyz/api.php
     volumes:
+      # 下载的音乐文件
       - ./downloads:/app/downloads
+      # 用户数据持久化（收藏列表、播放列表、偏好设置等）
+      - ./data:/app/data

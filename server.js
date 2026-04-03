@@ -10,6 +10,15 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件服务
 app.use(express.static(__dirname));
 
+// 确保数据目录存在
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// 获取默认音源配置
+const defaultMusicSource = process.env.DEFAULT_MUSIC_SOURCE || 'netease';
+
 // API 路由
 app.post('/api/download', async (req, res) => {
     try {
@@ -162,7 +171,73 @@ app.get('/proxy', async (req, res) => {
     }
 });
 
-// 存储API
+// 存储API - 用户数据持久化（收藏列表、播放列表、设置等）
+app.get('/api/user-data/:key', (req, res) => {
+    try {
+        const { key } = req.params;
+        const dataFile = path.join(dataDir, `${key}.json`);
+        
+        if (fs.existsSync(dataFile)) {
+            const data = fs.readFileSync(dataFile, 'utf8');
+            res.json({ success: true, data: JSON.parse(data) });
+        } else {
+            res.json({ success: true, data: null });
+        }
+    } catch (error) {
+        console.error("Get user data error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/user-data/:key', (req, res) => {
+    try {
+        const { key } = req.params;
+        const { data } = req.body;
+        
+        if (!key || data === undefined) {
+            return res.status(400).json({ success: false, error: "Missing key or data" });
+        }
+        
+        const dataFile = path.join(dataDir, `${key}.json`);
+        fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+        
+        console.log(`[Storage] Saved user data: ${key}`);
+        res.json({ success: true, message: `User data saved: ${key}` });
+    } catch (error) {
+        console.error("Save user data error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/user-data/:key', (req, res) => {
+    try {
+        const { key } = req.params;
+        const dataFile = path.join(dataDir, `${key}.json`);
+        
+        if (fs.existsSync(dataFile)) {
+            fs.unlinkSync(dataFile);
+            console.log(`[Storage] Deleted user data: ${key}`);
+        }
+        
+        res.json({ success: true, message: `User data deleted: ${key}` });
+    } catch (error) {
+        console.error("Delete user data error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 配置API
+app.get('/api/config', (req, res) => {
+    res.json({
+        success: true,
+        config: {
+            defaultMusicSource: defaultMusicSource,
+            apiBase: process.env.MUSIC_API_BASE || 'https://music-api.gdstudio.xyz/api.php'
+        }
+    });
+});
+
+// 兼容旧的存储API
 app.get('/api/storage', (req, res) => {
     res.json({ d1Available: false, data: {} });
 });
@@ -185,4 +260,6 @@ const port = process.env.PORT || 8080;
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     console.log(`Download directory: ${path.join(__dirname, 'downloads')}`);
+    console.log(`Data directory: ${dataDir}`);
+    console.log(`Default music source: ${defaultMusicSource}`);
 });

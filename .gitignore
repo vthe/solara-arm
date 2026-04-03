@@ -3,8 +3,9 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# 下载文件夹
+# 用户数据和下载文件（本地持久化）
 downloads/
+data/
 
 # 操作系统文件
 .DS_Store
