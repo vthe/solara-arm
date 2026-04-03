@@ -3260,6 +3260,61 @@ function setupInteractions() {
         });
     }
 
+    // 初始化移动端设置菜单
+    if (isMobileView) {
+        const mobileSettingsToggle = document.getElementById("mobileSettingsToggle");
+        const mobileSettingsMenu = document.getElementById("mobileSettingsMenu");
+        const mobileDownloadWhilePlayToggle = document.getElementById("mobileDownloadWhilePlayToggle");
+        const mobileDownloadOnFavoriteToggle = document.getElementById("mobileDownloadOnFavoriteToggle");
+
+        if (mobileSettingsToggle && mobileSettingsMenu) {
+            // 设置初始状态
+            if (mobileDownloadWhilePlayToggle) {
+                mobileDownloadWhilePlayToggle.checked = state.downloadWhilePlay;
+                mobileDownloadWhilePlayToggle.addEventListener("change", (e) => {
+                    state.downloadWhilePlay = e.target.checked;
+                    safeSetLocalStorage("downloadWhilePlay", e.target.checked ? "true" : "false");
+                    showNotification(
+                        e.target.checked ? "已启用下载边播放" : "已禁用下载边播放",
+                        "info"
+                    );
+                });
+            }
+
+            if (mobileDownloadOnFavoriteToggle) {
+                mobileDownloadOnFavoriteToggle.checked = state.downloadOnFavorite;
+                mobileDownloadOnFavoriteToggle.addEventListener("change", (e) => {
+                    state.downloadOnFavorite = e.target.checked;
+                    safeSetLocalStorage("downloadOnFavorite", e.target.checked ? "true" : "false");
+                    showNotification(
+                        e.target.checked ? "已启用收藏即下载" : "已禁用收藏即下载",
+                        "info"
+                    );
+                });
+            }
+
+            // 切换菜单的可见性
+            mobileSettingsToggle.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const isHidden = mobileSettingsMenu.hasAttribute("hidden");
+                if (isHidden) {
+                    mobileSettingsMenu.removeAttribute("hidden");
+                } else {
+                    mobileSettingsMenu.setAttribute("hidden", "");
+                }
+            });
+
+            // 点击菜单外部关闭菜单
+            document.addEventListener("click", (e) => {
+                const isClickInsideMenu = mobileSettingsMenu.contains(e.target);
+                const isClickOnButton = mobileSettingsToggle.contains(e.target);
+                if (!isClickInsideMenu && !isClickOnButton && !mobileSettingsMenu.hasAttribute("hidden")) {
+                    mobileSettingsMenu.setAttribute("hidden", "");
+                }
+            });
+        }
+    }
+
     if (isMobileView && dom.albumCover) {
         dom.albumCover.addEventListener("click", () => {
             toggleMobileInlineLyrics();
