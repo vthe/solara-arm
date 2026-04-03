@@ -732,6 +732,11 @@ const savedDownloadWhilePlay = (() => {
     return stored === "true" || stored === "1";
 })();
 
+const savedDownloadOnFavorite = (() => {
+    const stored = safeGetLocalStorage("downloadOnFavorite");
+    return stored === "true" || stored === "1";
+})();
+
 const savedSearchSource = (() => {
     const stored = safeGetLocalStorage("searchSource");
     return normalizeSource(stored);
@@ -926,6 +931,7 @@ const state = {
     playbackQuality: savedPlaybackQuality,
     volume: savedVolume,
     downloadWhilePlay: savedDownloadWhilePlay,
+    downloadOnFavorite: savedDownloadOnFavorite,
     currentPlaybackTime: savedPlaybackTime,
     lastSavedPlaybackTime: savedPlaybackTime,
     favoriteLastSavedPlaybackTime: savedFavoritePlaybackTime,
@@ -3204,6 +3210,7 @@ function setupInteractions() {
     const settingsToggle = document.getElementById("settingsToggle");
     const settingsMenu = document.getElementById("settingsMenu");
     const downloadWhilePlayToggle = document.getElementById("downloadWhilePlayToggle");
+    const downloadOnFavoriteToggle = document.getElementById("downloadOnFavoriteToggle");
 
     if (settingsToggle && settingsMenu && downloadWhilePlayToggle) {
         // 设置初始状态
@@ -3229,6 +3236,19 @@ function setupInteractions() {
                 "info"
             );
         });
+
+        // 监听收藏即下载选项的变化
+        if (downloadOnFavoriteToggle) {
+            downloadOnFavoriteToggle.checked = state.downloadOnFavorite;
+            downloadOnFavoriteToggle.addEventListener("change", (e) => {
+                state.downloadOnFavorite = e.target.checked;
+                safeSetLocalStorage("downloadOnFavorite", e.target.checked ? "true" : "false");
+                showNotification(
+                    e.target.checked ? "已启用收藏即下载" : "已禁用收藏即下载",
+                    "info"
+                );
+            });
+        }
 
         // 点击菜单外部关闭菜单
         document.addEventListener("click", (e) => {
@@ -4987,6 +5007,8 @@ function toggleFavorite(song) {
         saveFavoriteState();
         renderFavorites();
         showNotification("已添加到收藏列表", "success");
+        // 触发收藏即下载
+        triggerDownloadOnFavorite(normalizedSong);
     }
 }
 
@@ -5503,6 +5525,31 @@ async function triggerDownloadWhilePlay(song, quality) {
         }
     } finally {
         downloadWhilePlayPending.delete(key);
+    }
+}
+
+const downloadOnFavoritePending = new Set();
+
+async function triggerDownloadOnFavorite(song) {
+    if (!state.downloadOnFavorite || !song || !song.id || !song.source) {
+        return;
+    }
+
+    const key = getSongKey(song) || `${song?.id || ""}:${song?.source || ""}:${song?.name || ""}`;
+    if (downloadOnFavoritePending.has(key)) {
+        return;
+    }
+
+    downloadOnFavoritePending.add(key);
+    try {
+        const quality = state.playbackQuality || "320";
+        await downloadToServer(song, quality, {
+            autoplayAfterDownload: false,
+            showNotifications: false,
+            showErrorNotification: false,
+        });
+    } finally {
+        downloadOnFavoritePending.delete(key);
     }
 }
 
