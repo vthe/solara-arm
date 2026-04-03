@@ -2,6 +2,10 @@
 
 > 🌐 由轻量后端服务支撑的现代化网页音乐播放器，整合多种音乐聚合接口，覆盖搜索、播放与音频下载全流程。
 
+## 🔗 原始仓库
+
+本项目基于 [akudamatata/Solara](https://github.com/akudamatata/Solara) 仓库修改，添加了 Docker 支持和服务器端下载功能。
+
 ![Review-ezgif com-optimize](https://github.com/user-attachments/assets/487157de-bf71-4bc9-9e49-16a4f0a14472)
 | | | |
 |:--:|:--:|:--:|
