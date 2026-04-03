@@ -119,11 +119,27 @@
         <div class="header">
             <h1>Solara</h1>
             <div class="warning">Made by Wet Dream Boy，免费API来自GD音乐台(music.gdstudio.xyz)，仅供学习交流使用，请支持正版音乐奥！</div>
-            <div class="theme-switch-wrapper">
-                <button id="themeToggleButton" class="theme-toggle-button" type="button" aria-label="切换深浅色模式">
-                    <i class="fas fa-sun theme-icon theme-icon--sun" aria-hidden="true"></i>
-                    <i class="fas fa-moon theme-icon theme-icon--moon" aria-hidden="true"></i>
-                </button>
+            <div class="header-controls">
+                <div class="settings-container">
+                    <button id="settingsToggle" class="settings-btn" type="button" title="设置">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <div id="settingsMenu" class="settings-menu" hidden>
+                        <div class="settings-item">
+                            <label for="downloadWhilePlayToggle" class="settings-label">
+                                <input type="checkbox" id="downloadWhilePlayToggle" class="settings-checkbox">
+                                <span>下载边播放</span>
+                            </label>
+                            <span class="settings-help">下载音乐到服务器时同时播放</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="theme-switch-wrapper">
+                    <button id="themeToggleButton" class="theme-toggle-button" type="button" aria-label="切换深浅色模式">
+                        <i class="fas fa-sun theme-icon theme-icon--sun" aria-hidden="true"></i>
+                        <i class="fas fa-moon theme-icon theme-icon--moon" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
         </div>
 

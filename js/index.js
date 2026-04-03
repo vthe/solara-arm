@@ -655,8 +655,8 @@ const QUALITY_OPTIONS = [
     { value: "128", label: "标准音质", description: "128 kbps" },
     { value: "192", label: "高品音质", description: "192 kbps" },
     { value: "320", label: "极高音质", description: "320 kbps" },
-    { value: "740", label: "无损音质", description: "APE（需API支持）" },
-    { value: "999", label: "无损音质", description: "FLAC（需API支持）" }
+    { value: "740", label: "无损音质", description: "APE" },
+    { value: "999", label: "无损音质", description: "FLAC" }
 ];
 
 function normalizeQuality(value) {
@@ -725,6 +725,11 @@ const savedVolume = (() => {
         return Math.min(Math.max(volume, 0), 1);
     }
     return 0.8;
+})();
+
+const savedDownloadWhilePlay = (() => {
+    const stored = safeGetLocalStorage("downloadWhilePlay");
+    return stored === "true" || stored === "1";
 })();
 
 const savedSearchSource = (() => {
@@ -910,7 +915,7 @@ const state = {
     debugMode: false,
     isSearchMode: false, // 新增：搜索模式状态
     playlistSongs: savedPlaylistSongs, // 新增：统一播放列表
-    playMode: savedPlayMode, // 新增：播放模式 'list', 'single', 'random'
+    playMode: savedPlayMode, // 新增：播放模式'list', 'single', 'random'
     playlistLastNonRandomMode: savedPlayMode === "random" ? "list" : savedPlayMode,
     favoriteSongs: savedFavoriteSongs,
     currentFavoriteIndex: savedCurrentFavoriteIndex,
@@ -920,6 +925,7 @@ const state = {
     favoritePlaybackTime: savedFavoritePlaybackTime,
     playbackQuality: savedPlaybackQuality,
     volume: savedVolume,
+    downloadWhilePlay: savedDownloadWhilePlay,
     currentPlaybackTime: savedPlaybackTime,
     lastSavedPlaybackTime: savedPlaybackTime,
     favoriteLastSavedPlaybackTime: savedFavoritePlaybackTime,
@@ -1226,7 +1232,7 @@ bootstrapPersistentStorage();
     }
 
     function updateMediaMetadata() {
-        // 依赖现有全局 state.currentSong；已在项目中使用 localStorage 保存/恢复。:contentReference[oaicite:7]{index=7}
+        // 依赖现有全局 state.currentSong；已在项目中使用 localStorage 保存/恢复
         const song = state.currentSong || {};
         const title = song.name || dom.currentSongTitle?.textContent || 'Solara';
         const artist = song.artist || dom.currentSongArtist?.textContent || '';
@@ -1240,7 +1246,7 @@ bootstrapPersistentStorage();
                 artwork: getArtworkList(artworkUrl)
             });
         } catch (e) {
-            // 某些旧 iOS 可能对 artwork 尺寸挑剔，失败时用最小配置重试
+            // 某些 iOS 可能对 artwork 尺寸挑剔，失败时用最小配置重试
             try {
                 navigator.mediaSession.metadata = new MediaMetadata({ title, artist });
             } catch (_) {}
@@ -1281,7 +1287,7 @@ bootstrapPersistentStorage();
         // 播放/暂停交给 <audio> 默认行为即可
         try {
             navigator.mediaSession.setActionHandler('previoustrack', () => {
-                // 直接复用你已有的全局函数（HTML 里也在用）:contentReference[oaicite:9]{index=9}
+                // 直接复用你已有的全局函数（HTML 里也在用）
                 if (typeof window.playPrevious === 'function') {
                     const result = window.playPrevious();
                     if (result && typeof result.then === 'function') {
@@ -1379,7 +1385,7 @@ bootstrapPersistentStorage();
                 Promise.resolve().then(refresh);
                 return;
             } catch (error) {
-                console.warn('自动播放下一首失败:', error);
+                console.warn('自动播放下一首失败', error);
             }
         }
         audio[MEDIA_SESSION_ENDED_FLAG] = 'skip';
@@ -1396,7 +1402,7 @@ bootstrapPersistentStorage();
                 }
                 return;
             } catch (error) {
-                console.warn('自动播放下一首失败:', error);
+                console.warn('自动播放下一首失败', error);
             }
         }
         refresh();
@@ -1404,7 +1410,7 @@ bootstrapPersistentStorage();
 
     // 当你在应用内切歌（更新 state.currentSong / 封面 / 标题）时，也调用一次：
     // window.__SOLARA_UPDATE_MEDIA_METADATA = updateMediaMetadata;
-    // 这样在你现有的切歌逻辑里，设置完新的 audio.src 后手动调用它可立即更新锁屏封面/文案。
+    // 这样在你现有的切歌逻辑里，设置完新的 audio.src 后手动调用它可立即更新锁屏封面与文案。
     if (typeof window.__SOLARA_UPDATE_MEDIA_METADATA !== 'function') {
         window.__SOLARA_UPDATE_MEDIA_METADATA = updateMediaMetadata;
     }
@@ -1838,7 +1844,7 @@ async function fetchPaletteData(imageUrl, signal) {
     try {
         payload = raw ? JSON.parse(raw) : null;
     } catch (parseError) {
-        console.warn("解析调色板响应失败:", parseError);
+        console.warn("解析调色板响应失败", parseError);
     }
 
     if (!response.ok) {
@@ -1868,7 +1874,7 @@ async function updateDynamicBackground(imageUrl) {
         return;
     }
 
-    debugLog(`动态背景: 更新至新的图片 ${imageUrl}`);
+    debugLog(`动态背景更新至新的图片: ${imageUrl}`);
 
     if (paletteAbortController) {
         paletteAbortController.abort();
@@ -1906,7 +1912,7 @@ async function updateDynamicBackground(imageUrl) {
         if (error?.name === "AbortError") {
             return;
         }
-        console.warn("获取动态背景失败:", error);
+        console.warn("获取动态背景失败", error);
         debugLog(`动态背景加载失败: ${error}`);
         if (requestId === paletteRequestId) {
             resetDynamicBackground();
@@ -1961,7 +1967,7 @@ function debugLog(message) {
     }
 }
 
-// 启用调试模式（按Ctrl+D）
+// 启用调试模式（按 Ctrl+D）
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.key === "d") {
         e.preventDefault();
@@ -2002,7 +2008,7 @@ function showSearchResults(options = {}) {
     }
 }
 
-// 新增：隐藏搜索结果 - 优化立即收起
+// 新增：隐藏搜索结果- 优化立即收起
 function hideSearchResults() {
     toggleSearchMode(false);
     if (state.sourceMenuOpen) {
@@ -2202,7 +2208,7 @@ function setPlayMode(mode, { announce = true } = {}) {
     if (announce) {
         const modeText = playModeTexts[mode] || playModeTexts.list;
         showNotification(`播放模式: ${modeText}`);
-        debugLog(`播放模式切换为: ${mode} (列表: ${state.currentList})`);
+        debugLog(`播放模式切换: ${mode} (列表: ${state.currentList})`);
     }
 
     return mode;
@@ -2859,7 +2865,7 @@ async function restoreCurrentSongState() {
 }
 
 window.addEventListener("load", setupInteractions);
-// 仅在浏览器不支持 Media Session API 时监听 ended 事件，
+// 仅在浏览器不支持 Media Session API 时监听 ended 事件。
 // 避免与媒体会话的结束回调重复触发自动播放。
 if (!("mediaSession" in navigator)) {
     dom.audioPlayer.addEventListener("ended", autoPlayNext);
@@ -3128,6 +3134,46 @@ function setupInteractions() {
         setQualityAnchorState(dom.mobileQualityToggle, false);
     }
     dom.playerQualityMenu.addEventListener("click", handlePlayerQualitySelection);
+
+    // 初始化设置菜单
+    const settingsToggle = document.getElementById("settingsToggle");
+    const settingsMenu = document.getElementById("settingsMenu");
+    const downloadWhilePlayToggle = document.getElementById("downloadWhilePlayToggle");
+
+    if (settingsToggle && settingsMenu && downloadWhilePlayToggle) {
+        // 设置初始状态
+        downloadWhilePlayToggle.checked = state.downloadWhilePlay;
+
+        // 切换菜单的可见性
+        settingsToggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isHidden = settingsMenu.hasAttribute("hidden");
+            if (isHidden) {
+                settingsMenu.removeAttribute("hidden");
+            } else {
+                settingsMenu.setAttribute("hidden", "");
+            }
+        });
+
+        // 监听下载边播放选项的变化
+        downloadWhilePlayToggle.addEventListener("change", (e) => {
+            state.downloadWhilePlay = e.target.checked;
+            safeSetLocalStorage("downloadWhilePlay", e.target.checked ? "true" : "false");
+            showNotification(
+                e.target.checked ? "已启用下载边播放" : "已禁用下载边播放",
+                "info"
+            );
+        });
+
+        // 点击菜单外部关闭菜单
+        document.addEventListener("click", (e) => {
+            const isClickInsideMenu = settingsMenu.contains(e.target);
+            const isClickOnButton = settingsToggle.contains(e.target);
+            if (!isClickInsideMenu && !isClickOnButton && !settingsMenu.hasAttribute("hidden")) {
+                settingsMenu.setAttribute("hidden", "");
+            }
+        });
+    }
 
     if (isMobileView && dom.albumCover) {
         dom.albumCover.addEventListener("click", () => {
@@ -3579,7 +3625,7 @@ async function performSearch(isLiveSearch = false) {
     try {
         // 禁用搜索按钮并显示加载状态
         dom.searchBtn.disabled = true;
-        dom.searchBtn.innerHTML = '<span class="loader"></span><span>搜索中...</span>';
+        dom.searchBtn.innerHTML = '<span class="loader"></span><span>搜索...</span>';
 
         // 立即显示搜索模式
         showSearchResults();
@@ -3637,7 +3683,7 @@ async function loadMoreResults() {
 
     try {
         loadMoreBtn.disabled = true;
-        loadMoreBtn.innerHTML = '<span class="loader"></span><span>加载中...</span>';
+        loadMoreBtn.innerHTML = '<span class="loader"></span><span>加载...</span>';
 
         state.searchPage++;
         debugLog(`加载第 ${state.searchPage} 页结果`);
@@ -3657,7 +3703,7 @@ async function loadMoreResults() {
             debugLog(`加载完成: 新增 ${results.length} 个结果`);
         } else {
             state.hasMoreResults = false;
-            showNotification("没有更多结果了");
+            showNotification("没有更多结果");
             debugLog("没有更多结果");
         }
     } catch (error) {
@@ -3838,9 +3884,9 @@ function updateImportSelectedButton() {
     if (countLabel) {
         countLabel.textContent = count > 0 ? `(${count})` : "";
     }
-    const label = count > 0 ? `导入已选 (${count})` : "导入已选";
+    const label = count > 0 ? `导入已选(${count})` : "导入已选";
     button.title = label;
-    button.setAttribute("aria-label", count > 0 ? `导入已选 ${count} 首歌曲` : "导入已选");
+    button.setAttribute("aria-label", count > 0 ? `导入已选${count} 首歌曲` : "导入已选");
 }
 
 function toggleSearchResultSelection(index) {
@@ -4048,7 +4094,7 @@ function displaySearchResults(newItems, options = {}) {
     if (itemsToAppend.length === 0 && state.renderedSearchCount === 0 && totalCount === 0) {
         container.innerHTML = "<div style=\"text-align: center; color: var(--text-secondary-color); padding: 20px;\">未找到相关歌曲</div>";
         state.renderedSearchCount = 0;
-        debugLog("显示搜索结果: 0 个结果, 无可用数据");
+        debugLog("显示搜索结果: 0 个结果，无可用数据");
         return;
     }
 
@@ -4068,7 +4114,7 @@ function displaySearchResults(newItems, options = {}) {
 
     const appendedCount = itemsToAppend.length;
     const totalRendered = state.renderedSearchCount;
-    debugLog(`显示搜索结果: 新增 ${appendedCount} 个结果, 总计 ${totalRendered} 个, 加载更多按钮: ${state.hasMoreResults ? "显示" : "隐藏"}`);
+    debugLog(`显示搜索结果: 新增 ${appendedCount} 个结果，总计 ${totalRendered}，加载更多按钮: ${state.hasMoreResults ? "显示" : "隐藏"}`);
     updateFavoriteIcons();
 }
 
@@ -4164,7 +4210,7 @@ async function downloadWithQuality(event, index, type, quality, toServer = false
     }
 }
 
-// 修复：播放搜索结果 - 添加到播放列表而不是清空
+// 修复：播放搜索结果- 添加到播放列表而不是清空
 async function playSearchResult(index) {
     const song = state.searchResults[index];
     if (!song) return;
@@ -5194,7 +5240,7 @@ function updatePlaylistHighlight() {
     });
 }
 
-// 修复：播放歌曲函数 - 支持统一播放列表
+// 修复：播放歌曲函数- 支持统一播放列表
 function waitForAudioReady(player) {
     if (!player) return Promise.resolve();
     if (player.readyState >= 1) {
@@ -5345,6 +5391,10 @@ async function playSong(song, options = {}) {
 
         scheduleDeferredSongAssets(song, playPromise);
 
+        if (state.downloadWhilePlay) {
+            triggerDownloadWhilePlay(song, quality);
+        }
+
         debugLog(`开始播放: ${song.name} @${quality}`);
 
         if (typeof window.__SOLARA_UPDATE_MEDIA_METADATA === 'function') {
@@ -5355,6 +5405,39 @@ async function playSong(song, options = {}) {
         throw error;
     } finally {
         savePlayerState();
+    }
+}
+
+const downloadWhilePlayPending = new Set();
+const downloadWhilePlayCompleted = new Set();
+
+function buildDownloadWhilePlayKey(song, quality) {
+    const songKey = getSongKey(song) || `${song?.id || ""}:${song?.source || ""}:${song?.name || ""}`;
+    return `${songKey}::${quality || "320"}`;
+}
+
+async function triggerDownloadWhilePlay(song, quality) {
+    if (!state.downloadWhilePlay || !song || !song.id || !song.source) {
+        return;
+    }
+
+    const key = buildDownloadWhilePlayKey(song, quality);
+    if (downloadWhilePlayPending.has(key) || downloadWhilePlayCompleted.has(key)) {
+        return;
+    }
+
+    downloadWhilePlayPending.add(key);
+    try {
+        const result = await downloadToServer(song, quality, {
+            autoplayAfterDownload: false,
+            showNotifications: false,
+            showErrorNotification: false,
+        });
+        if (result && result.success) {
+            downloadWhilePlayCompleted.add(key);
+        }
+    } finally {
+        downloadWhilePlayPending.delete(key);
     }
 }
 
@@ -5404,7 +5487,7 @@ function scheduleDeferredSongAssets(song, playPromise) {
     }
 }
 
-// 修复：自动播放下一首 - 支持播放模式
+// 修复：自动播放下一首- 支持播放模式
 function autoPlayNext() {
     if (dom.audioPlayer && dom.audioPlayer.__solaraMediaSessionHandledEnded === 'skip') {
         dom.audioPlayer.__solaraMediaSessionHandledEnded = false;
@@ -5422,7 +5505,7 @@ function autoPlayNext() {
     updatePlayPauseButton();
 }
 
-// 修复：播放下一首 - 支持播放模式和统一播放列表
+// 修复：播放下一首- 支持播放模式和统一播放列表
 function playNext() {
     if (state.currentList === "favorite") {
         const favorites = ensureFavoriteSongsArray();
@@ -5486,7 +5569,7 @@ function playNext() {
     }
 }
 
-// 修复：播放上一首 - 支持播放模式和统一播放列表
+// 修复：播放上一首- 支持播放模式和统一播放列表
 function playPrevious() {
     if (state.currentList === "favorite") {
         const favorites = ensureFavoriteSongsArray();
@@ -5695,7 +5778,7 @@ async function exploreOnlineMusic() {
         renderPlaylist();
         updatePlaylistHighlight();
 
-        showNotification(`探索雷达：新增${appendedSongs.length}首 ${randomGenre} 歌曲`);
+        showNotification(`探索雷达：新增 ${appendedSongs.length} 首 ${randomGenre} 歌曲`);
         debugLog(`探索雷达加载成功，关键词：${randomGenre}，音源：${source}，新增歌曲数：${appendedSongs.length}`);
 
         const shouldAutoplay = existingSongs.length === 0 && state.playlistSongs.length > 0;
@@ -5880,7 +5963,7 @@ function scrollToCurrentLyric(element, containerOverride) {
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
 
-    // 计算元素在容器内部的可视位置，避免受到 offsetParent 影响
+    // 计算元素在容器内部的可视位置，避免受 offsetParent 影响
     const elementOffsetTop = elementRect.top - containerRect.top + container.scrollTop;
     const elementHeight = elementRect.height;
 
@@ -5936,7 +6019,7 @@ async function downloadSong(song, quality = "320") {
                         return match[1];
                     }
                 } catch (error) {
-                    console.warn("无法从下载链接中解析扩展名:", error);
+                    console.warn("无法从下载链接中解析扩展名", error);
                 }
                 return preferredExtension;
             })();
@@ -5957,11 +6040,18 @@ async function downloadSong(song, quality = "320") {
 }
 
 // 下载到服务器
-async function downloadToServer(song, quality = "320") {
-    try {
-        showNotification("正在准备下载到服务器...");
+async function downloadToServer(song, quality = "320", options = {}) {
+    const {
+        autoplayAfterDownload = true,
+        showNotifications = true,
+        showErrorNotification = true,
+    } = options || {};
 
-        // 向服务器发送下载请求
+    try {
+        if (showNotifications) {
+            showNotification("正在准备下载到服务器...");
+        }
+
         const response = await fetch("/api/download", {
             method: "POST",
             headers: {
@@ -5974,20 +6064,42 @@ async function downloadToServer(song, quality = "320") {
 
         if (result.success) {
             const qualityInfo = result.qualityLabel || `${result.quality}kbps`;
-            const message = result.quality !== quality 
+            const message = result.quality !== quality
                 ? `已下载到服务器: ${result.filename} (原请求: ${quality}, 实际: ${result.quality})`
                 : `已下载到服务器: ${result.filename} (${qualityInfo})`;
-            showNotification(message, "success");
-        } else if (result.fallbackQuality && quality === "999") {
-            // 无损格式不可用，自动降级到 320kbps
-            showNotification(`该歌曲不支持无损格式，自动降级为 320kbps`, "warning");
-            await downloadToServer(song, "320");
-        } else {
-            throw new Error(result.error || "下载到服务器失败");
+
+            if (showNotifications) {
+                showNotification(message, "success");
+            }
+
+            if (autoplayAfterDownload && state.downloadWhilePlay) {
+                setTimeout(() => {
+                    try {
+                        playSong(song, { autoplay: true });
+                        showNotification(`正在播放: ${song.name}`, "info");
+                    } catch (error) {
+                        console.warn("下载边播放失败:", error);
+                    }
+                }, 300);
+            }
+
+            return result;
         }
+
+        if (result.fallbackQuality && quality === "999") {
+            if (showNotifications) {
+                showNotification("该歌曲不支持无损格式，自动降级为 320kbps", "warning");
+            }
+            return await downloadToServer(song, "320", options);
+        }
+
+        throw new Error(result.error || "下载到服务器失败");
     } catch (error) {
         console.error("下载到服务器失败:", error);
-        showNotification(`下载到服务器失败: ${error.message}`, "error");
+        if (showErrorNotification) {
+            showNotification(`下载到服务器失败: ${error.message}`, "error");
+        }
+        return null;
     }
 }
 
@@ -6029,3 +6141,7 @@ function showNotification(message, type = "success") {
         notification.classList.remove("show");
     }, 3000);
 }
+
+
+
+
